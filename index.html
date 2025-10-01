@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="robots" content="noindex, nofollow">
-    <title>でんしゃ ひらがな ならべゲーム (iOS対応版)</title>
+    <title>でんしゃ ひらがな ならべゲーム (IndexedDB版)</title>
     <style>
         body {
             font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
@@ -337,37 +337,135 @@
             selectedTrainIndex: 0
         };
 
-        const STORAGE_KEY = 'trainHiraganaGame_questions';
+        const DB_NAME = 'trainHiraganaGame';
+        const DB_VERSION = 1;
+        const STORE_NAME = 'trains';
+        let db = null;
 
-        function saveQuestionsToStorage(questionsData) {
-            try {
-                const dataStr = JSON.stringify(questionsData);
-                if (typeof(Storage) !== "undefined") {
-                    localStorage.setItem(STORAGE_KEY, dataStr);
-                    console.log('データを保存しました:', questionsData.length, '件');
-                } else {
-                    console.log('LocalStorageがサポートされていません');
-                }
-            } catch (error) {
-                console.error('データの保存に失敗しました:', error);
-                alert('データの保存に失敗しました。写真のサイズが大きすぎる可能性があります。');
-            }
+        // IndexedDB初期化
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                
+                request.onerror = () => reject(request.error);
+                request.onsuccess = () => {
+                    db = request.result;
+                    resolve(db);
+                };
+                
+                request.onupgradeneeded = (event) => {
+                    const db = event.target.result;
+                    if (!db.objectStoreNames.contains(STORE_NAME)) {
+                        const objectStore = db.createObjectStore(STORE_NAME, { keyPath: 'id' });
+                        objectStore.createIndex('createdAt', 'createdAt', { unique: false });
+                    }
+                };
+            });
         }
 
-        function loadQuestionsFromStorage() {
+        // 画像圧縮関数
+        function compressImage(file, maxWidth = 1200, quality = 0.85) {
+            return new Promise((resolve, reject) => {
+                if (file.size > 10 * 1024 * 1024) {
+                    reject(new Error('しゃしんが おおきすぎます。10MB いかの しゃしんを えらんでください。'));
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        let width = img.width;
+                        let height = img.height;
+                        
+                        if (width > maxWidth) {
+                            height = (height * maxWidth) / width;
+                            width = maxWidth;
+                        }
+                        
+                        canvas.width = width;
+                        canvas.height = height;
+                        ctx.drawImage(img, 0, 0, width, height);
+                        
+                        const compressed = canvas.toDataURL('image/jpeg', quality);
+                        resolve(compressed);
+                    };
+                    img.onerror = () => reject(new Error('しゃしんの よみこみに しっぱい しました'));
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => reject(new Error('ファイルの よみこみに しっぱい しました'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        // データ保存
+        async function saveQuestion(question) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.put(question);
+                
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // 全データ読み込み
+        async function loadAllQuestions() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readonly');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.getAll();
+                
+                request.onsuccess = () => {
+                    const questions = request.result || [];
+                    questions.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+                    resolve(questions);
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // データ削除
+        async function deleteQuestion(id) {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.delete(id);
+                
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // 全データクリア
+        async function clearAllData() {
+            return new Promise((resolve, reject) => {
+                const transaction = db.transaction([STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(STORE_NAME);
+                const request = store.clear();
+                
+                request.onsuccess = () => resolve();
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        // ストレージ使用量推定
+        async function getStorageUsage() {
             try {
-                if (typeof(Storage) !== "undefined") {
-                    const saved = localStorage.getItem(STORAGE_KEY);
-                    if (saved) {
-                        const parsed = JSON.parse(saved);
-                        console.log('データを読み込みました:', parsed.length, '件');
-                        return parsed;
-                    }
+                if ('storage' in navigator && 'estimate' in navigator.storage) {
+                    const estimate = await navigator.storage.estimate();
+                    const usedMB = (estimate.usage / (1024 * 1024)).toFixed(1);
+                    const quotaMB = (estimate.quota / (1024 * 1024)).toFixed(0);
+                    return `${usedMB}MB / ${quotaMB}MB`;
                 }
             } catch (error) {
-                console.error('データの読み込みに失敗しました:', error);
+                console.error('ストレージ使用量の取得に失敗:', error);
             }
-            return [];
+            return '計測不可';
         }
 
         function shuffleArray(array) {
@@ -385,7 +483,6 @@
                 return;
             }
             
-            // 問題をランダムにシャッフル
             gameState.questions = shuffleArray(gameState.questions);
             gameState.currentQuestion = 0;
             
@@ -449,24 +546,20 @@
             render();
         }
 
-        function handleImageUpload(event) {
+        async function handleImageUpload(event) {
             const file = event.target.files[0];
             if (file) {
-                if (file.size > 2 * 1024 * 1024) {
-                    alert('しゃしんが おおきすぎます。2MB いかの しゃしんを えらんでください。');
-                    return;
-                }
-                
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    gameState.uploadedImage = e.target.result;
+                try {
+                    const compressed = await compressImage(file);
+                    gameState.uploadedImage = compressed;
                     render();
-                };
-                reader.readAsDataURL(file);
+                } catch (error) {
+                    alert(error.message || 'しゃしんの しょりに しっぱい しました');
+                }
             }
         }
 
-        function addTrainQuestion() {
+        async function addTrainQuestion() {
             if (gameState.inputTrainName.trim() && gameState.uploadedImage) {
                 const hiraganaOnlyRegex = /^[ぁ-んー]+$/;
                 const trimmedName = gameState.inputTrainName.trim();
@@ -485,72 +578,70 @@
                     createdAt: new Date().toISOString()
                 };
                 
-                gameState.questions = [...gameState.questions, newQuestion];
-                saveQuestionsToStorage(gameState.questions);
-                gameState.uploadedImage = null;
-                gameState.inputTrainName = '';
-                gameState.gameMode = 'menu';
-                alert('"' + trimmedName + '" を ついか しました!\n(じどうてきに ほぞん されました)');
-                render();
+                try {
+                    await saveQuestion(newQuestion);
+                    gameState.questions = await loadAllQuestions();
+                    gameState.uploadedImage = null;
+                    gameState.inputTrainName = '';
+                    gameState.gameMode = 'menu';
+                    alert('"' + trimmedName + '" を ついか しました!\n(じどうてきに ほぞん されました)');
+                    render();
+                } catch (error) {
+                    console.error('保存エラー:', error);
+                    alert('データの ほぞんに しっぱい しました');
+                }
             } else {
                 alert('しゃしんと でんしゃの なまえ りょうほう いれてね!');
             }
         }
 
-        function deleteTrainQuestion(questionId) {
+        async function deleteTrainQuestion(questionId) {
             const questionToDelete = gameState.questions.find(q => q.id === questionId);
             
             if (questionToDelete && confirm('"' + questionToDelete.name + '" を けしますか?')) {
-                gameState.questions = gameState.questions.filter(q => q.id !== questionId);
-                saveQuestionsToStorage(gameState.questions);
-                alert('"' + questionToDelete.name + '" を けしました!');
-                
-                if (gameState.gameMode === 'game' || gameState.gameMode === 'zukan' || gameState.gameMode === 'zukan-detail') {
-                    gameState.gameMode = 'menu';
-                    gameState.currentQuestion = 0;
-                }
-                render();
-            }
-        }
-
-        function clearAllData() {
-            if (confirm('すべての でんしゃの データを けしますか?\n(この こうさは もとに もどせません)')) {
-                if (typeof(Storage) !== "undefined") {
-                    localStorage.removeItem(STORAGE_KEY);
-                }
-                gameState.questions = [];
-                alert('すべての データを けしました!');
-                render();
-            }
-        }
-
-        function getStorageUsage() {
-            try {
-                if (typeof(Storage) !== "undefined") {
-                    const data = localStorage.getItem(STORAGE_KEY);
-                    if (data) {
-                        const sizeInBytes = new Blob([data]).size;
-                        const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(1);
-                        return sizeInMB;
+                try {
+                    await deleteQuestion(questionId);
+                    gameState.questions = await loadAllQuestions();
+                    alert('"' + questionToDelete.name + '" を けしました!');
+                    
+                    if (gameState.gameMode === 'game' || gameState.gameMode === 'zukan' || gameState.gameMode === 'zukan-detail') {
+                        gameState.gameMode = 'menu';
+                        gameState.currentQuestion = 0;
                     }
+                    render();
+                } catch (error) {
+                    console.error('削除エラー:', error);
+                    alert('データの さくじょに しっぱい しました');
                 }
-            } catch (error) {
-                console.error('ストレージ使用量の計算に失敗:', error);
             }
-            return '0.0';
         }
 
-        function render() {
+        async function clearAllDataConfirm() {
+            if (confirm('すべての でんしゃの データを けしますか?\n(この こうさは もとに もどせません)')) {
+                try {
+                    await clearAllData();
+                    gameState.questions = [];
+                    alert('すべての データを けしました!');
+                    render();
+                } catch (error) {
+                    console.error('削除エラー:', error);
+                    alert('データの さくじょに しっぱい しました');
+                }
+            }
+        }
+
+        async function render() {
             const app = document.getElementById('app');
             let html = '';
 
             if (gameState.gameMode === 'menu') {
+                const storageInfo = await getStorageUsage();
                 html = `
                     <div class="container">
                         <div class="card">
                             <h1>🚄 でんしゃ もじならべ 🚄</h1>
                             <p class="text-2xl text-gray-600 mb-2">しゃしんを みて ひらがなを ならべよう!</p>
-                            <p class="text-lg text-green-600">💾 えいぞ ほぞんばん - データが のこります!</p>
+                            <p class="text-lg text-green-600">💾 たいようりょう ばん - 100まいいじょう ほぞん できます!</p>
                         </div>
                         
                         <div class="card bg-yellow-100 border-yellow-300">
@@ -559,7 +650,7 @@
                                 <p class="mb-2">1️⃣ でんしゃの しゃしんを とってね</p>
                                 <p class="mb-2">2️⃣ しゃしんを みて でんしゃの なまえを あてよう</p>
                                 <p class="mb-2">3️⃣ ばらばらの ひらがなを じゅんばんに おしてね</p>
-                                <p class="text-green-600">💾 データは じどうてきに ほぞん されます!</p>
+                                <p class="text-green-600">💾 しゃしんは じどうてきに あっしゅく されます!</p>
                             </div>
                         </div>
 
@@ -598,7 +689,7 @@
                         <div class="card">
                             <div class="flex-between mb-4">
                                 <h3>ついかされた でんしゃ (${gameState.questions.length}だい)</h3>
-                                <button class="btn btn-red" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="clearAllData();">🗑️ ぜんぶ けす</button>
+                                <button class="btn btn-red" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="clearAllDataConfirm();">🗑️ ぜんぶ けす</button>
                             </div>
                             <div class="grid grid-4 mb-4">
                                 ${gameState.questions.map((question, index) => `
@@ -611,8 +702,8 @@
                                 `).join('')}
                             </div>
                             <div class="bg-gray-100 p-4" style="border-radius: 0.75rem;">
-                                <p class="text-gray-600">💾 しょうちゅう ようりょう: ${getStorageUsage()}MB</p>
-                                <p class="text-gray-600">※ しゃしんが おおいと どうさが おそくなる ばあいが あります</p>
+                                <p class="text-gray-600">💾 ストレージ ようりょう: ${storageInfo}</p>
+                                <p class="text-gray-600">✨ しゃしんは じどうてきに あっしゅく されています</p>
                             </div>
                         </div>
                         ` : ''}
@@ -632,7 +723,7 @@
                             <div class="upload-area">
                                 <div class="text-6xl mb-4">📸</div>
                                 <p class="text-xl text-gray-600 mb-6">でんしゃの しゃしんを えらんでね</p>
-                                <p class="text-gray-500 mb-6">※ 2MB いかの しゃしんを おすすめします</p>
+                                <p class="text-gray-600 mb-6">✨ しゃしんは じどうてきに あっしゅく されます</p>
                                 <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="hidden" id="image-upload">
                                 <label for="image-upload" class="btn btn-blue">しゃしんを えらぶ</label>
                             </div>
@@ -643,7 +734,7 @@
                                 
                                 <div class="mb-6">
                                     <input type="text" value="${gameState.inputTrainName}" oninput="gameState.inputTrainName = this.value;" placeholder="でんしゃの なまえ(れい:やまのてせん)" class="input-field" id="train-name-input">
-                                    <p class="text-gray-600 mt-2">※ひらがなだけで にゅうりょく してね</p>
+                                    <p class="text-gray-600 mt-2">※ひらがなと「ー」だけで にゅうりょく してね</p>
                                 </div>
                                 
                                 <div class="mb-6">
@@ -656,7 +747,7 @@
                                 </div>
                                 
                                 <div class="mb-4">
-                                    <button class="btn btn-blue mb-4" ${!gameState.inputTrainName.trim() || !gameState.uploadedImage ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''} onclick="addTrainQuestion();">💾 もんだいを ついか・ほぞん</button>
+                                    <button class="btn btn-blue mb-4" onclick="addTrainQuestion();">💾 もんだいを ついか・ほぞん</button>
                                     
                                     <div>
                                         <button class="btn btn-gray" onclick="gameState.uploadedImage = null; gameState.inputTrainName = ''; render();">べつの しゃしん</button>
@@ -787,16 +878,18 @@
             app.innerHTML = html;
         }
 
-        function init() {
-            const savedQuestions = loadQuestionsFromStorage();
-            if (savedQuestions.length > 0) {
-                gameState.questions = savedQuestions;
+        async function init() {
+            try {
+                await initDB();
+                gameState.questions = await loadAllQuestions();
+                render();
+            } catch (error) {
+                console.error('初期化エラー:', error);
+                alert('アプリの しょきかに しっぱい しました');
             }
-            render();
         }
 
         document.addEventListener('DOMContentLoaded', init);
     </script>
 </body>
 </html>
-                
