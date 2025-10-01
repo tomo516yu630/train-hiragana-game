@@ -468,7 +468,7 @@
 
         function addTrainQuestion() {
             if (gameState.inputTrainName.trim() && gameState.uploadedImage) {
-                const hiraganaOnlyRegex = /^[ぁ-ん]+$/;
+                const hiraganaOnlyRegex = /^[ぁ-んー]+$/;
                 const trimmedName = gameState.inputTrainName.trim();
                 
                 if (!hiraganaOnlyRegex.test(trimmedName)) {
