@@ -334,7 +334,8 @@
             isCompleted: false,
             inputTrainName: '',
             questions: [],
-            selectedTrainIndex: 0
+            selectedTrainIndex: 0,
+            isPracticeMode: false
         };
 
         const DB_NAME = 'trainHiraganaGame';
@@ -485,6 +486,7 @@
             
             gameState.questions = shuffleArray(gameState.questions);
             gameState.currentQuestion = 0;
+            gameState.isPracticeMode = false;
             
             const question = gameState.questions[gameState.currentQuestion];
             const letters = question.name.split('');
@@ -492,6 +494,19 @@
             gameState.selectedLetters = [];
             gameState.currentTrainName = question.name;
             gameState.gameMode = 'game';
+            gameState.isCompleted = false;
+            render();
+        }
+
+        function startPracticeMode(trainIndex) {
+            gameState.selectedTrainIndex = trainIndex;
+            gameState.isPracticeMode = true;
+            const question = gameState.questions[trainIndex];
+            const letters = question.name.split('');
+            gameState.shuffledLetters = shuffleArray(letters);
+            gameState.selectedLetters = [];
+            gameState.currentTrainName = question.name;
+            gameState.gameMode = 'practice';
             gameState.isCompleted = false;
             render();
         }
@@ -508,27 +523,36 @@
             if (newSelected.length === gameState.currentTrainName.length) {
                 const answer = newSelected.join('');
                 if (answer === gameState.currentTrainName) {
-                    gameState.score++;
                     gameState.showSuccess = true;
                     gameState.isCompleted = true;
                     render();
                     
                     setTimeout(() => {
                         gameState.showSuccess = false;
-                        if (gameState.currentQuestion < gameState.questions.length - 1) {
-                            gameState.currentQuestion++;
-                            const nextQuestion = gameState.questions[gameState.currentQuestion];
-                            const nextLetters = nextQuestion.name.split('');
-                            gameState.shuffledLetters = shuffleArray(nextLetters);
-                            gameState.selectedLetters = [];
-                            gameState.currentTrainName = nextQuestion.name;
+                        
+                        if (gameState.isPracticeMode) {
+                            // 練習モードの場合は図鑑詳細に戻る
+                            gameState.gameMode = 'zukan-detail';
                             gameState.isCompleted = false;
                         } else {
-                            setTimeout(() => {
-                                gameState.gameMode = 'menu';
-                                gameState.currentQuestion = 0;
-                                gameState.score = 0;
-                            }, 2000);
+                            // 通常ゲームモードの処理
+                            if (gameState.currentQuestion < gameState.questions.length - 1) {
+                                gameState.score++;
+                                gameState.currentQuestion++;
+                                const nextQuestion = gameState.questions[gameState.currentQuestion];
+                                const nextLetters = nextQuestion.name.split('');
+                                gameState.shuffledLetters = shuffleArray(nextLetters);
+                                gameState.selectedLetters = [];
+                                gameState.currentTrainName = nextQuestion.name;
+                                gameState.isCompleted = false;
+                            } else {
+                                gameState.score++;
+                                setTimeout(() => {
+                                    gameState.gameMode = 'menu';
+                                    gameState.currentQuestion = 0;
+                                    gameState.score = 0;
+                                }, 2000);
+                            }
                         }
                         render();
                     }, 2000);
@@ -537,10 +561,34 @@
             render();
         }
 
+        function undoLastLetter() {
+            if (gameState.selectedLetters.length === 0) return;
+            
+            const lastLetter = gameState.selectedLetters[gameState.selectedLetters.length - 1];
+            gameState.selectedLetters = gameState.selectedLetters.slice(0, -1);
+            
+            // 削除した文字を選択肢の最後に戻す
+            const newShuffled = [...gameState.shuffledLetters];
+            for (let i = 0; i < newShuffled.length; i++) {
+                if (newShuffled[i] === null) {
+                    newShuffled[i] = lastLetter;
+                    break;
+                }
+            }
+            gameState.shuffledLetters = newShuffled;
+            render();
+        }
+
         function resetCurrentQuestion() {
-            const question = gameState.questions[gameState.currentQuestion];
-            const letters = question.name.split('');
-            gameState.shuffledLetters = shuffleArray(letters);
+            if (gameState.isPracticeMode) {
+                const question = gameState.questions[gameState.selectedTrainIndex];
+                const letters = question.name.split('');
+                gameState.shuffledLetters = shuffleArray(letters);
+            } else {
+                const question = gameState.questions[gameState.currentQuestion];
+                const letters = question.name.split('');
+                gameState.shuffledLetters = shuffleArray(letters);
+            }
             gameState.selectedLetters = [];
             gameState.isCompleted = false;
             render();
@@ -779,7 +827,7 @@
                         ` : `
                         <div class="grid grid-4">
                             ${gameState.questions.map((question, index) => `
-                            <div class="train-card" style="border-color: #a855f7;" onclick="gameState.selectedTrainIndex = ${index}; gameState.gameMode = 'zukan-detail'; render();">
+                            <div class="train-card" style="border-color: #a855f7;" onclick="startPracticeMode(${index});">
                                 <img src="${question.image}" alt="${question.name}" class="train-img">
                                 <p class="text-lg text-gray-800">${question.name}</p>
                                 <p class="text-purple-600">No.${index + 1}</p>
@@ -857,8 +905,8 @@
                             ).join('')}
                         </div>
 
-                        <button class="btn btn-orange flex" style="margin: 0 auto;" onclick="resetCurrentQuestion();">
-                            🔄 やりなおし
+                        <button class="btn btn-orange flex" style="margin: 0 auto;" onclick="undoLastLetter();" ${gameState.selectedLetters.length === 0 ? 'disabled style="margin: 0 auto; opacity: 0.5; cursor: not-allowed;"' : ''}>
+                            ⬅️ いちもじ けす
                         </button>
                     </div>
 
@@ -869,6 +917,58 @@
                             <h3 style="color: #1f2937;">せいかい!</h3>
                             <p class="text-2xl text-gray-600 mb-6">${gameState.currentTrainName}</p>
                             <div class="text-4xl text-yellow-600 bg-yellow-100 border-yellow-300" style="border-radius: 1rem; padding: 1rem 1.5rem; border: 4px solid #fcd34d;">${gameState.score} てん!</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                `;
+            } else if (gameState.gameMode === 'practice') {
+                const currentQuestionData = gameState.questions[gameState.selectedTrainIndex];
+                html = `
+                    <div class="container">
+                        <div class="flex-between mb-6">
+                            <button class="btn btn-gray flex" onclick="gameState.gameMode = 'zukan'; render();">
+                                📖 <span class="text-lg">ずかんへ</span>
+                            </button>
+                            <div class="text-2xl text-purple-600 card" style="border-color: #a855f7; padding: 0.75rem 1.5rem;">れんしゅう</div>
+                            <button class="btn btn-purple flex" onclick="gameState.gameMode = 'menu'; render();">
+                                🏠 <span class="text-lg">メニュー</span>
+                            </button>
+                        </div>
+
+                        <div class="card mb-6">
+                            <h2>この でんしゃは なに?</h2>
+                            
+                            <img src="${currentQuestionData.image}" alt="電車の写真" style="width: 100%; max-width: 28rem; max-height: 20rem; object-fit: contain; border-radius: 1rem; margin: 0 auto 1.5rem; border: 4px solid #a855f7;">
+                            
+                            <div class="flex" style="justify-content: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.5rem;">
+                                ${gameState.selectedLetters.map(letter => `
+                                <div class="letter-box" style="border-color: #a855f7;">${letter}</div>
+                                `).join('')}
+                                ${Array.from({ length: gameState.currentTrainName.length - gameState.selectedLetters.length }).map(() => `
+                                <div class="empty-box"></div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-3 gap-4 mb-6" style="max-width: 32rem; margin: 0 auto;">
+                            ${gameState.shuffledLetters.map((letter, index) => 
+                                letter ? `
+                                <button class="btn btn-purple" style="padding: 1.5rem 1rem; font-size: 2rem; ${gameState.isCompleted ? 'opacity: 0.5; cursor: not-allowed;' : ''}" onclick="selectLetter('${letter}', ${index});">${letter}</button>
+                                ` : '<div style="padding: 1.5rem 1rem;"></div>'
+                            ).join('')}
+                        </div>
+
+                        <button class="btn btn-orange flex" style="margin: 0 auto;" onclick="undoLastLetter();" ${gameState.selectedLetters.length === 0 ? 'disabled style="margin: 0 auto; opacity: 0.5; cursor: not-allowed;"' : ''}>
+                            ⬅️ いちもじ けす
+                        </button>
+                    </div>
+
+                    ${gameState.showSuccess ? `
+                    <div class="modal">
+                        <div class="modal-content">
+                            <div class="text-8xl mb-6">🎉</div>
+                            <h3 style="color: #1f2937;">せいかい!</h3>
+                            <p class="text-2xl text-gray-600 mb-6">${gameState.currentTrainName}</p>
                         </div>
                     </div>
                     ` : ''}
