@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>でんしゃ ひらがな ならべゲーム (iOS対応版)</title>
+    <style>
+        body {
+            font-family: 'Hiragino Sans', 'Yu Gothic', sans-serif;
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f3e5f5 50%, #e8f5e8 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 1.5rem;
+            text-align: center;
+        }
+        
+        .card {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 2rem;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+            border: 4px solid #e2e8f0;
+            margin-bottom: 2rem;
+        }
+        
+        .btn {
+            border: none;
+            border-radius: 1.5rem;
+            padding: 1.5rem 2rem;
+            font-size: 1.125rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            text-decoration: none;
+            display: inline-block;
+        }
+        
+        .btn:hover {
+            transform: scale(1.05);
+        }
+        
+        .btn-green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border: 4px solid #064e3b;
+        }
+        
+        .btn-blue {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+            color: white;
+            border: 4px solid #1e3a8a;
+        }
+        
+        .btn-purple {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            border: 4px solid #581c87;
+        }
+        
+        .btn-gray {
+            background: linear-gradient(135deg, #6b7280 0%, #374151 100%);
+            color: white;
+            border: 2px solid #1f2937;
+        }
+        
+        .btn-red {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            color: white;
+            border: 2px solid #991b1b;
+        }
+        
+        .btn-orange {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            color: white;
+            border: 2px solid #c2410c;
+        }
+        
+        .grid {
+            display: grid;
+            gap: 1rem;
+        }
+        
+        .grid-2 {
+            grid-template-columns: repeat(2, 1fr);
+        }
+        
+        .grid-3 {
+            grid-template-columns: repeat(3, 1fr);
+        }
+        
+        .grid-4 {
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        }
+        
+        .letter-box {
+            background: white;
+            border: 4px solid #3b82f6;
+            border-radius: 1rem;
+            width: 4rem;
+            height: 4rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            font-weight: bold;
+            color: #1f2937;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        
+        .empty-box {
+            background: #f3f4f6;
+            border: 4px dashed #9ca3af;
+            border-radius: 1rem;
+            width: 4rem;
+            height: 4rem;
+        }
+        
+        .train-card {
+            background: #dbeafe;
+            border: 2px solid #3b82f6;
+            border-radius: 1rem;
+            padding: 1rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        
+        .train-card:hover {
+            transform: scale(1.05);
+        }
+        
+        .train-img {
+            width: 100%;
+            height: 8rem;
+            object-fit: cover;
+            border-radius: 0.75rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .delete-btn {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: #ef4444;
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 2rem;
+            height: 2rem;
+            font-size: 1.125rem;
+            font-weight: bold;
+            cursor: pointer;
+            z-index: 10;
+            transition: all 0.2s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #dc2626;
+            transform: scale(1.1);
+        }
+        
+        .input-field {
+            width: 100%;
+            max-width: 32rem;
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-align: center;
+            padding: 1rem;
+            border: 4px solid #3b82f6;
+            border-radius: 1rem;
+            background: #dbeafe;
+            margin: 0 auto;
+        }
+        
+        .upload-area {
+            border: 4px dashed #3b82f6;
+            border-radius: 1rem;
+            padding: 3rem;
+            margin-bottom: 1.5rem;
+            background: #f8fafc;
+        }
+        
+        .flex {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 1rem;
+        }
+        
+        .flex-between {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .hidden {
+            display: none;
+        }
+        
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 50;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 1.5rem;
+            padding: 2.5rem;
+            text-align: center;
+            max-width: 28rem;
+            margin: 1rem;
+            border: 4px solid #fbbf24;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        }
+        
+        h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            color: #1f2937;
+            margin-bottom: 1rem;
+            letter-spacing: 0.1em;
+        }
+        
+        h2 {
+            font-size: 2rem;
+            font-weight: 900;
+            color: #1f2937;
+            margin-bottom: 1.5rem;
+        }
+        
+        h3 {
+            font-size: 1.5rem;
+            font-weight: 900;
+            color: #1f2937;
+            margin-bottom: 1rem;
+        }
+        
+        .text-lg {
+            font-size: 1.125rem;
+        }
+        
+        .text-xl {
+            font-size: 1.25rem;
+        }
+        
+        .text-2xl {
+            font-size: 1.5rem;
+        }
+        
+        .text-3xl {
+            font-size: 1.875rem;
+        }
+        
+        .text-4xl {
+            font-size: 2.25rem;
+        }
+        
+        .text-6xl {
+            font-size: 4rem;
+        }
+        
+        .text-8xl {
+            font-size: 6rem;
+        }
+        
+        .mb-2 { margin-bottom: 0.5rem; }
+        .mb-4 { margin-bottom: 1rem; }
+        .mb-6 { margin-bottom: 1.5rem; }
+        .mb-8 { margin-bottom: 2rem; }
+        .mt-2 { margin-top: 0.5rem; }
+        .mt-4 { margin-top: 1rem; }
+        .mt-8 { margin-top: 2rem; }
+        
+        .p-2 { padding: 0.5rem; }
+        .p-4 { padding: 1rem; }
+        .py-2 { padding-top: 0.5rem; padding-bottom: 0.5rem; }
+        .px-4 { padding-left: 1rem; padding-right: 1rem; }
+        .px-6 { padding-left: 1.5rem; padding-right: 1.5rem; }
+        
+        .text-gray-600 { color: #4b5563; }
+        .text-gray-700 { color: #374151; }
+        .text-gray-800 { color: #1f2937; }
+        .text-green-600 { color: #059669; }
+        .text-purple-600 { color: #7c3aed; }
+        .text-yellow-600 { color: #d97706; }
+        
+        .bg-yellow-100 { background-color: #fef3c7; }
+        .bg-gray-100 { background-color: #f3f4f6; }
+        
+        .border-yellow-300 { border-color: #fcd34d; }
+        
+        @media (max-width: 768px) {
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            
+            .grid-3 {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            
+            .flex-between {
+                flex-direction: column;
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>
+
+    <script>
+        let gameState = {
+            currentQuestion: 0,
+            selectedLetters: [],
+            shuffledLetters: [],
+            score: 0,
+            gameMode: 'menu',
+            uploadedImage: null,
+            currentTrainName: '',
+            showSuccess: false,
+            isCompleted: false,
+            inputTrainName: '',
+            questions: [],
+            selectedTrainIndex: 0
+        };
+
+        const STORAGE_KEY = 'trainHiraganaGame_questions';
+
+        function saveQuestionsToStorage(questionsData) {
+            try {
+                const dataStr = JSON.stringify(questionsData);
+                if (typeof(Storage) !== "undefined") {
+                    localStorage.setItem(STORAGE_KEY, dataStr);
+                    console.log('データを保存しました:', questionsData.length, '件');
+                } else {
+                    console.log('LocalStorageがサポートされていません');
+                }
+            } catch (error) {
+                console.error('データの保存に失敗しました:', error);
+                alert('データの保存に失敗しました。写真のサイズが大きすぎる可能性があります。');
+            }
+        }
+
+        function loadQuestionsFromStorage() {
+            try {
+                if (typeof(Storage) !== "undefined") {
+                    const saved = localStorage.getItem(STORAGE_KEY);
+                    if (saved) {
+                        const parsed = JSON.parse(saved);
+                        console.log('データを読み込みました:', parsed.length, '件');
+                        return parsed;
+                    }
+                }
+            } catch (error) {
+                console.error('データの読み込みに失敗しました:', error);
+            }
+            return [];
+        }
+
+        function shuffleArray(array) {
+            const newArray = [...array];
+            for (let i = newArray.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [newArray[i], newArray[j]] = [newArray[j], newArray[i]];
+            }
+            return newArray;
+        }
+
+        function startGame() {
+            if (gameState.questions.length === 0) {
+                alert('まず でんしゃの しゃしんを ついかしてね!');
+                return;
+            }
+            
+            // 問題をランダムにシャッフル
+            gameState.questions = shuffleArray(gameState.questions);
+            gameState.currentQuestion = 0;
+            
+            const question = gameState.questions[gameState.currentQuestion];
+            const letters = question.name.split('');
+            gameState.shuffledLetters = shuffleArray(letters);
+            gameState.selectedLetters = [];
+            gameState.currentTrainName = question.name;
+            gameState.gameMode = 'game';
+            gameState.isCompleted = false;
+            render();
+        }
+
+        function selectLetter(letter, index) {
+            const newSelected = [...gameState.selectedLetters, letter];
+            gameState.selectedLetters = newSelected;
+            
+            const newShuffled = gameState.shuffledLetters.map((l, i) => 
+                i === index ? null : l
+            );
+            gameState.shuffledLetters = newShuffled;
+
+            if (newSelected.length === gameState.currentTrainName.length) {
+                const answer = newSelected.join('');
+                if (answer === gameState.currentTrainName) {
+                    gameState.score++;
+                    gameState.showSuccess = true;
+                    gameState.isCompleted = true;
+                    render();
+                    
+                    setTimeout(() => {
+                        gameState.showSuccess = false;
+                        if (gameState.currentQuestion < gameState.questions.length - 1) {
+                            gameState.currentQuestion++;
+                            const nextQuestion = gameState.questions[gameState.currentQuestion];
+                            const nextLetters = nextQuestion.name.split('');
+                            gameState.shuffledLetters = shuffleArray(nextLetters);
+                            gameState.selectedLetters = [];
+                            gameState.currentTrainName = nextQuestion.name;
+                            gameState.isCompleted = false;
+                        } else {
+                            setTimeout(() => {
+                                gameState.gameMode = 'menu';
+                                gameState.currentQuestion = 0;
+                                gameState.score = 0;
+                            }, 2000);
+                        }
+                        render();
+                    }, 2000);
+                }
+            }
+            render();
+        }
+
+        function resetCurrentQuestion() {
+            const question = gameState.questions[gameState.currentQuestion];
+            const letters = question.name.split('');
+            gameState.shuffledLetters = shuffleArray(letters);
+            gameState.selectedLetters = [];
+            gameState.isCompleted = false;
+            render();
+        }
+
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                if (file.size > 2 * 1024 * 1024) {
+                    alert('しゃしんが おおきすぎます。2MB いかの しゃしんを えらんでください。');
+                    return;
+                }
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    gameState.uploadedImage = e.target.result;
+                    render();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function addTrainQuestion() {
+            if (gameState.inputTrainName.trim() && gameState.uploadedImage) {
+                const hiraganaOnlyRegex = /^[ぁ-ん]+$/;
+                const trimmedName = gameState.inputTrainName.trim();
+                
+                if (!hiraganaOnlyRegex.test(trimmedName)) {
+                    alert('ひらがなだけで にゅうりょく してね!\n(例:やまのてせん、しんかんせん)');
+                    return;
+                }
+
+                const newQuestion = {
+                    id: Date.now(),
+                    name: trimmedName,
+                    display: trimmedName,
+                    image: gameState.uploadedImage,
+                    description: 'あなたが とった しゃしん',
+                    createdAt: new Date().toISOString()
+                };
+                
+                gameState.questions = [...gameState.questions, newQuestion];
+                saveQuestionsToStorage(gameState.questions);
+                gameState.uploadedImage = null;
+                gameState.inputTrainName = '';
+                gameState.gameMode = 'menu';
+                alert('"' + trimmedName + '" を ついか しました!\n(じどうてきに ほぞん されました)');
+                render();
+            } else {
+                alert('しゃしんと でんしゃの なまえ りょうほう いれてね!');
+            }
+        }
+
+        function deleteTrainQuestion(questionId) {
+            const questionToDelete = gameState.questions.find(q => q.id === questionId);
+            
+            if (questionToDelete && confirm('"' + questionToDelete.name + '" を けしますか?')) {
+                gameState.questions = gameState.questions.filter(q => q.id !== questionId);
+                saveQuestionsToStorage(gameState.questions);
+                alert('"' + questionToDelete.name + '" を けしました!');
+                
+                if (gameState.gameMode === 'game' || gameState.gameMode === 'zukan' || gameState.gameMode === 'zukan-detail') {
+                    gameState.gameMode = 'menu';
+                    gameState.currentQuestion = 0;
+                }
+                render();
+            }
+        }
+
+        function clearAllData() {
+            if (confirm('すべての でんしゃの データを けしますか?\n(この こうさは もとに もどせません)')) {
+                if (typeof(Storage) !== "undefined") {
+                    localStorage.removeItem(STORAGE_KEY);
+                }
+                gameState.questions = [];
+                alert('すべての データを けしました!');
+                render();
+            }
+        }
+
+        function getStorageUsage() {
+            try {
+                if (typeof(Storage) !== "undefined") {
+                    const data = localStorage.getItem(STORAGE_KEY);
+                    if (data) {
+                        const sizeInBytes = new Blob([data]).size;
+                        const sizeInMB = (sizeInBytes / (1024 * 1024)).toFixed(1);
+                        return sizeInMB;
+                    }
+                }
+            } catch (error) {
+                console.error('ストレージ使用量の計算に失敗:', error);
+            }
+            return '0.0';
+        }
+
+        function render() {
+            const app = document.getElementById('app');
+            let html = '';
+
+            if (gameState.gameMode === 'menu') {
+                html = `
+                    <div class="container">
+                        <div class="card">
+                            <h1>🚄 でんしゃ もじならべ 🚄</h1>
+                            <p class="text-2xl text-gray-600 mb-2">しゃしんを みて ひらがなを ならべよう!</p>
+                            <p class="text-lg text-green-600">💾 えいぞ ほぞんばん - データが のこります!</p>
+                        </div>
+                        
+                        <div class="card bg-yellow-100 border-yellow-300">
+                            <h2>ゲームのやりかた</h2>
+                            <div class="text-lg text-gray-700 mb-4">
+                                <p class="mb-2">1️⃣ でんしゃの しゃしんを とってね</p>
+                                <p class="mb-2">2️⃣ しゃしんを みて でんしゃの なまえを あてよう</p>
+                                <p class="mb-2">3️⃣ ばらばらの ひらがなを じゅんばんに おしてね</p>
+                                <p class="text-green-600">💾 データは じどうてきに ほぞん されます!</p>
+                            </div>
+                        </div>
+
+                        <div class="mb-6">
+                            <div class="grid grid-2 gap-6 mb-6" style="max-width: 48rem; margin: 0 auto;">
+                                <button class="btn btn-green" style="height: 16rem;" onclick="gameState.gameMode = 'upload'; render();">
+                                    <div class="text-6xl mb-4">📸</div>
+                                    <div class="text-3xl mb-2">しゃしんを ついか</div>
+                                    <div class="text-lg">でんしゃの しゃしんを えらんでね</div>
+                                </button>
+
+                                ${gameState.questions.length > 0 ? `
+                                <button class="btn btn-blue" style="height: 16rem;" onclick="startGame();">
+                                    <div class="text-6xl mb-4">🎮</div>
+                                    <div class="text-3xl mb-2">ゲーム スタート</div>
+                                    <div class="text-lg">${gameState.questions.length}つの でんしゃで あそぼう</div>
+                                </button>
+                                ` : `
+                                <div class="bg-yellow-100 border-yellow-300" style="height: 16rem; border-radius: 1.5rem; border: 4px solid #fcd34d; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 2rem;">
+                                    <div class="text-4xl mb-4">📸</div>
+                                    <p class="text-lg text-gray-700">まずは でんしゃの しゃしんを ついか してね!</p>
+                                </div>
+                                `}
+                            </div>
+
+                            ${gameState.questions.length > 0 ? `
+                            <button class="btn btn-purple mb-8" style="max-width: 28rem; width: 100%;" onclick="gameState.gameMode = 'zukan'; render();">
+                                <div class="text-4xl mb-3">📖</div>
+                                <div class="text-2xl mb-2">でんしゃずかん</div>
+                                <div class="text-lg">${gameState.questions.length}だいの でんしゃを みる</div>
+                            </button>
+                            ` : ''}
+                        </div>
+
+                        ${gameState.questions.length > 0 ? `
+                        <div class="card">
+                            <div class="flex-between mb-4">
+                                <h3>ついかされた でんしゃ (${gameState.questions.length}だい)</h3>
+                                <button class="btn btn-red" style="padding: 0.5rem 1rem; font-size: 0.875rem;" onclick="clearAllData();">🗑️ ぜんぶ けす</button>
+                            </div>
+                            <div class="grid grid-4 mb-4">
+                                ${gameState.questions.map((question, index) => `
+                                <div class="train-card">
+                                    <button class="delete-btn" onclick="deleteTrainQuestion(${question.id});">✕</button>
+                                    <img src="${question.image}" alt="${question.name}" class="train-img">
+                                    <p class="text-lg text-gray-800" style="padding-right: 2rem;">${question.name}</p>
+                                    <p class="text-gray-600">${index + 1}ばんめ</p>
+                                </div>
+                                `).join('')}
+                            </div>
+                            <div class="bg-gray-100 p-4" style="border-radius: 0.75rem;">
+                                <p class="text-gray-600">💾 しょうちゅう ようりょう: ${getStorageUsage()}MB</p>
+                                <p class="text-gray-600">※ しゃしんが おおいと どうさが おそくなる ばあいが あります</p>
+                            </div>
+                        </div>
+                        ` : ''}
+                    </div>
+                `;
+            } else if (gameState.gameMode === 'upload') {
+                html = `
+                    <div class="container">
+                        <button class="btn btn-gray flex mb-6" onclick="gameState.gameMode = 'menu'; render();">
+                            🏠 <span class="text-lg">もどる</span>
+                        </button>
+
+                        <div class="card">
+                            <h2>でんしゃの しゃしんを ついか</h2>
+
+                            ${!gameState.uploadedImage ? `
+                            <div class="upload-area">
+                                <div class="text-6xl mb-4">📸</div>
+                                <p class="text-xl text-gray-600 mb-6">でんしゃの しゃしんを えらんでね</p>
+                                <p class="text-gray-500 mb-6">※ 2MB いかの しゃしんを おすすめします</p>
+                                <input type="file" accept="image/*" onchange="handleImageUpload(event)" class="hidden" id="image-upload">
+                                <label for="image-upload" class="btn btn-blue">しゃしんを えらぶ</label>
+                            </div>
+                            ` : `
+                            <div class="mb-6">
+                                <img src="${gameState.uploadedImage}" alt="アップロードされた電車" style="width: 100%; max-width: 28rem; max-height: 20rem; object-fit: contain; border-radius: 1rem; margin: 0 auto 1.5rem; border: 4px solid #3b82f6;">
+                                <p class="text-xl text-gray-700 mb-6">この でんしゃの なまえを ひらがなで いれてね</p>
+                                
+                                <div class="mb-6">
+                                    <input type="text" value="${gameState.inputTrainName}" oninput="gameState.inputTrainName = this.value; render();" placeholder="でんしゃの なまえ(れい:やまのてせん)" class="input-field">
+                                    <p class="text-gray-600 mt-2">※ひらがなだけで にゅうりょく してね</p>
+                                </div>
+                                
+                                <div class="mb-6">
+                                    <p class="text-lg text-gray-600 mb-4">よく つかわれる でんしゃの なまえ</p>
+                                    <div class="grid grid-2 gap-3" style="max-width: 32rem; margin: 0 auto;">
+                                        ${['やまのてせん', 'しんかんせん', 'けいきゅう', 'おだきゅう', 'ちゅうおうせん', 'けいはんでんしゃ', 'とうきゅう', 'はんしんでんしゃ', 'にしてつ', 'あいてつ', 'きんてつ', 'なんかい'].map(name => `
+                                        <button class="btn" style="background: #10b981; color: white; padding: 0.5rem 0.75rem; font-size: 1.125rem;" onclick="gameState.inputTrainName = '${name}'; render();">${name}</button>
+                                        `).join('')}
+                                    </div>
+                                </div>
+                                
+                                <div class="mb-4">
+                                    <button class="btn btn-blue mb-4" ${!gameState.inputTrainName.trim() || !gameState.uploadedImage ? 'style="opacity: 0.5; cursor: not-allowed;"' : ''} onclick="addTrainQuestion();">💾 もんだいを ついか・ほぞん</button>
+                                    
+                                    <div>
+                                        <button class="btn btn-gray" onclick="gameState.uploadedImage = null; gameState.inputTrainName = ''; render();">べつの しゃしん</button>
+                                    </div>
+                                </div>
+                            </div>
+                            `}
+                        </div>
+                    </div>
+                `;
+            } else if (gameState.gameMode === 'zukan') {
+                html = `
+                    <div class="container" style="background: linear-gradient(135deg, #faf5ff 0%, #fce7f3 50%, #dbeafe 100%);">
+                        <button class="btn btn-gray flex mb-6" onclick="gameState.gameMode = 'menu'; render();">
+                            🏠 <span class="text-lg">もどる</span>
+                        </button>
+
+                        <div class="card" style="border-color: #a855f7;">
+                            <h1 style="color: #7c3aed;">📖 でんしゃずかん 📖</h1>
+                            <p class="text-xl text-gray-600">${gameState.questions.length}だいの でんしゃが とうろく されています</p>
+                        </div>
+
+                        ${gameState.questions.length === 0 ? `
+                        <div class="card bg-yellow-100 border-yellow-300">
+                            <div class="text-6xl mb-4">📚</div>
+                            <p class="text-xl text-gray-700 mb-2">まだ でんしゃが ありません</p>
+                            <p class="text-lg text-gray-600">しゃしんを ついか してね!</p>
+                        </div>
+                        ` : `
+                        <div class="grid grid-4">
+                            ${gameState.questions.map((question, index) => `
+                            <div class="train-card" style="border-color: #a855f7;" onclick="gameState.selectedTrainIndex = ${index}; gameState.gameMode = 'zukan-detail'; render();">
+                                <img src="${question.image}" alt="${question.name}" class="train-img">
+                                <p class="text-lg text-gray-800">${question.name}</p>
+                                <p class="text-purple-600">No.${index + 1}</p>
+                            </div>
+                            `).join('')}
+                        </div>
+                        `}
+                    </div>
+                `;
+            } else if (gameState.gameMode === 'zukan-detail') {
+                const currentTrain = gameState.questions[gameState.selectedTrainIndex];
+                html = `
+                    <div class="container" style="background: linear-gradient(135deg, #faf5ff 0%, #fce7f3 50%, #dbeafe 100%);">
+                        <div class="flex-between mb-6">
+                            <button class="btn btn-gray flex" onclick="gameState.gameMode = 'zukan'; render();">
+                                ⬅️ <span class="text-lg">ずかんへ</span>
+                            </button>
+                            <div class="text-2xl text-purple-600 card" style="border-color: #a855f7; padding: 0.75rem 1.5rem;">No.${gameState.selectedTrainIndex + 1} / ${gameState.questions.length}</div>
+                            <button class="btn btn-purple flex" onclick="gameState.gameMode = 'menu'; render();">
+                                🏠 <span class="text-lg">メニュー</span>
+                            </button>
+                        </div>
+
+                        <div class="card" style="border-color: #a855f7;">
+                            <img src="${currentTrain.image}" alt="${currentTrain.name}" style="width: 100%; max-width: 32rem; height: 24rem; object-fit: cover; border-radius: 1rem; margin: 0 auto 1.5rem; border: 4px solid #a855f7; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);">
+                            <h2 style="color: #1f2937;">${currentTrain.name}</h2>
+                            <p class="text-xl text-purple-600 mb-6">No.${gameState.selectedTrainIndex + 1} の でんしゃ</p>
+                        </div>
+
+                        <div class="flex-between mt-8">
+                            ${gameState.selectedTrainIndex > 0 ? `
+                            <button class="btn btn-purple" onclick="gameState.selectedTrainIndex--; render();">⬅️ まえの でんしゃ</button>
+                            ` : '<div></div>'}
+                            
+                            ${gameState.selectedTrainIndex < gameState.questions.length - 1 ? `
+                            <button class="btn btn-purple" onclick="gameState.selectedTrainIndex++; render();">つぎの でんしゃ ➡️</button>
+                            ` : '<div></div>'}
+                        </div>
+                    </div>
+                `;
+            } else if (gameState.gameMode === 'game') {
+                const currentQuestionData = gameState.questions[gameState.currentQuestion];
+                html = `
+                    <div class="container">
+                        <div class="flex-between mb-6">
+                            <button class="btn btn-gray flex" onclick="gameState.gameMode = 'menu'; render();">
+                                🏠 <span class="text-lg">メニュー</span>
+                            </button>
+                            <div class="text-2xl text-blue-600 card" style="border-color: #3b82f6; padding: 0.75rem 1.5rem;">${gameState.currentQuestion + 1}/${gameState.questions.length}</div>
+                            <div class="flex text-yellow-600 card" style="border-color: #fbbf24; padding: 0.75rem 1.5rem;">
+                                ⭐ <span class="text-2xl">${gameState.score}</span>
+                            </div>
+                        </div>
+
+                        <div class="card mb-6">
+                            <h2>この でんしゃは なに?</h2>
+                            
+                            <img src="${currentQuestionData.image}" alt="電車の写真" style="width: 100%; max-width: 28rem; max-height: 20rem; object-fit: contain; border-radius: 1rem; margin: 0 auto 1.5rem; border: 4px solid #3b82f6;">
+                            
+                            <div class="flex" style="justify-content: center; gap: 0.5rem; flex-wrap: wrap; margin-top: 1.5rem;">
+                                ${gameState.selectedLetters.map(letter => `
+                                <div class="letter-box">${letter}</div>
+                                `).join('')}
+                                ${Array.from({ length: gameState.currentTrainName.length - gameState.selectedLetters.length }).map(() => `
+                                <div class="empty-box"></div>
+                                `).join('')}
+                            </div>
+                        </div>
+
+                        <div class="grid grid-3 gap-4 mb-6" style="max-width: 32rem; margin: 0 auto;">
+                            ${gameState.shuffledLetters.map((letter, index) => 
+                                letter ? `
+                                <button class="btn btn-blue" style="padding: 1.5rem 1rem; font-size: 2rem; ${gameState.isCompleted ? 'opacity: 0.5; cursor: not-allowed;' : ''}" onclick="selectLetter('${letter}', ${index});">${letter}</button>
+                                ` : '<div style="padding: 1.5rem 1rem;"></div>'
+                            ).join('')}
+                        </div>
+
+                        <button class="btn btn-orange flex" style="margin: 0 auto;" onclick="resetCurrentQuestion();">
+                            🔄 やりなおし
+                        </button>
+                    </div>
+
+                    ${gameState.showSuccess ? `
+                    <div class="modal">
+                        <div class="modal-content">
+                            <div class="text-8xl mb-6">🎉</div>
+                            <h3 style="color: #1f2937;">せいかい!</h3>
+                            <p class="text-2xl text-gray-600 mb-6">${gameState.currentTrainName}</p>
+                            <div class="text-4xl text-yellow-600 bg-yellow-100 border-yellow-300" style="border-radius: 1rem; padding: 1rem 1.5rem; border: 4px solid #fcd34d;">${gameState.score} てん!</div>
+                        </div>
+                    </div>
+                    ` : ''}
+                `;
+            }
+
+            app.innerHTML = html;
+        }
+
+        function init() {
+            const savedQuestions = loadQuestionsFromStorage();
+            if (savedQuestions.length > 0) {
+                gameState.questions = savedQuestions;
+            }
+            render();
+        }
+
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
+                
